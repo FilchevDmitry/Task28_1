@@ -4,9 +4,9 @@
 #include<mutex>
 #include<chrono>
 #include<vector>
-#include<map>
 
-std::mutex r;
+
+std::mutex r,p;
 class Swimmer
 {
 private:
@@ -30,8 +30,9 @@ public:	void setName()
 	{
 		return speed;
 	}
-	void printDistance(double inDistanse)
+	void printDistance(double inDistanse, std::vector <std::string> &tab )
 	{
+		std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
 		double distanse = 0;
 		int temp = 0;
 		while (distanse < inDistanse)
@@ -39,15 +40,17 @@ public:	void setName()
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 			temp++;
 			distanse = speed * temp;
-			if (distanse > inDistanse) distanse = inDistanse;
+			if (distanse > inDistanse)distanse = inDistanse;
 			r.lock();
 			std::cout << "A swimmer " << name << " sailed : " << distanse << std::endl;
 			r.unlock();
 		}
-	}
-	double getTimeDistance(double &inDistance)
-	{
-		return inDistance / speed;
+		std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+		std::chrono::duration<double> sec = end - start;
+		p.lock();
+		tab.push_back(std::to_string(sec.count()) + "   " + name);
+		p.unlock();
+
 	}
 };
 
@@ -55,7 +58,7 @@ int main()
 {	double dist = 100;
 	const int numberSwimmers = 6;
 	std::vector<Swimmer> swimmer;
-	std::map<double, std::string> table;
+	std::vector<std::string> finalTable;
 	
 	for (int i = 0; i < numberSwimmers; i++)
 	{
@@ -66,21 +69,15 @@ int main()
 	std::vector<std::thread> temp;
 	for (int i = 0; i < numberSwimmers; i++)
 	{	
-		temp.emplace_back(&Swimmer::printDistance,swimmer[i],dist);
+		temp.emplace_back(&Swimmer::printDistance,swimmer[i],dist,std::ref(finalTable));
 	}
 	for (auto& i : temp)
 	{
 		i.join();
 	}
-	for (int i = 0; i < numberSwimmers; i++)
+	for (auto& p : finalTable)
 	{
-		table[swimmer[i].getTimeDistance(dist)] = swimmer[i].getName();
-	}
-	std::map<double, std::string>::iterator tab = table.begin();
-	std::cout << "Final table" << std::endl;
-	for (int i = 0; tab != table.end(); tab++, i++)
-	{
-		std::cout << tab->first << "  " << tab->second << std::endl;
+		std::cout << p << std::endl;
 	}
 	return 0;
 }
